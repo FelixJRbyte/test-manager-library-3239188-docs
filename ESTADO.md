@@ -22,11 +22,11 @@ Mientras eso siga así, ninguna tarea del `api` puede quedar como "verificada".
 
 | Documento | Estado |
 |---|---|
-| traduccion-laravel-react.md | pendiente |
-| decisiones.md | pendiente |
-| tasks.md (T0..T9) | pendiente |
-| ADRs adaptados | pendiente |
-| Revisión corta de coherencia | pendiente |
+| traduccion-laravel-react.md | hecho (documento) |
+| decisiones.md (D1..D25) | hecho (documento) |
+| tasks.md (T0..T9) | hecho (documento) |
+| ADRs adaptados (L001..L005) | hecho (documento) |
+| Revisión corta de coherencia (`revision-coherencia.md`, 4 correcciones aplicadas) | hecho (documento) |
 
 ## Fase 2 · Implementación
 
