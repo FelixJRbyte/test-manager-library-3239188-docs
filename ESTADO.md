@@ -33,7 +33,7 @@ Mientras eso siga así, ninguna tarea del `api` puede quedar como "verificada".
 | Tarea | Repo | Estado |
 |---|---|---|
 | T0 infra + esqueleto + /health | infra, api | **implementado, no ejecutado** (commits en `infra` hasta `feat(infra): T0 servicio api...` y en `api` hasta `05a5d94`) |
-| T1 migraciones, errores, login JWT, roles, admin, categorías | api | pendiente |
+| T1 migraciones, errores, login JWT, roles, admin, categorías | api | **implementado, no ejecutado** (commits `3acd7e2`..`feat(api): T1 POST /auth/login...`) |
 | T2 usuarios | api | pendiente |
 | T3 libros | api | pendiente |
 | T4 socios | api | pendiente |
