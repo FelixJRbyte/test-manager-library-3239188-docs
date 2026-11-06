@@ -33,6 +33,7 @@ Cada decisión indica **qué documentos entran en tensión** y **por qué se res
 | D22 | Conteo de "sin devolver" y vencidos | Aclaración |
 | D23 | Paginación fuera de rango | Hueco |
 | D24 | Identificador que no es UUID | Hueco |
+| D25 | Tabla `migrations` y `search_path` | Riesgo técnico |
 
 ---
 
@@ -117,7 +118,7 @@ Ejemplo: tiene 2 sin devolver y pide 2 libros → 4 > 3 → 422, con "ya tiene 2
 | Convención de Laravel | Decisión |
 |---|---|
 | Tablas en plural | Singular, con `protected $table = 'book'` explícito en cada modelo |
-| Esquema `public` | Esquema `library`: `CREATE SCHEMA IF NOT EXISTS library` en la primera migración y `search_path=library` en `config/database.php` |
+| Esquema `public` | Esquema `library`: `CREATE SCHEMA IF NOT EXISTS library` en la primera migración, `search_path=library,public` en `config/database.php` y nombres calificados (ver D25 por qué no basta `search_path=library`) |
 | `created_at`/`updated_at` | `public $timestamps = false`; las migraciones no llaman a `timestamps()` |
 | Columnas con `DEFAULT` | Ninguna. Los valores los pone el código |
 | IDs autoincrementales | UUID **v4** con `Str::uuid()`; `$incrementing = false`; `$keyType = 'string'` |
@@ -151,20 +152,23 @@ Fórmula: `max(1, intdiv(now - due_at en segundos, 86400))`.
 
 ## D12 · Código para 401 sin token
 
-**Contradicción.** `api-contract` §1 dice que 401 aplica a "sin token, token inválido o vencido, credenciales inválidas". Pero §2 solo define `INVALID_CREDENTIALS` (401), con origen CA-01.2 (login).
-Un token ausente no es una credencial inválida.
+**Contradicción (aparente).** `api-contract` §1 dice que 401 aplica a "sin token, token inválido o vencido, credenciales inválidas". Pero §2 solo define `INVALID_CREDENTIALS` (401), con origen CA-01.2 (login).
+Un token ausente no es, en rigor, una credencial inválida.
 
-**Decisión.** Se añade `UNAUTHENTICATED` (401) para token ausente, inválido o vencido. `INVALID_CREDENTIALS` queda solo para `POST /auth/login`.
-El cuerpo de error sigue siendo el único.
+**Decisión.** **No se inventa un código nuevo.** Todo 401 usa `INVALID_CREDENTIALS`, que es el único código 401 del §2.
+Lo que cambia es el `message` en español: en el login, "Usuario o contraseña incorrectos" (idéntico para usuario inexistente y clave errónea, CA-01.2);
+con token ausente, inválido o vencido, "Sesión no válida o vencida. Inicie sesión de nuevo".
 
-**Por qué.** El contrato manda sobre el plan, pero aquí calla; distinguir los dos casos ayuda al cliente (React redirige a login con uno y muestra el mensaje con el otro).
-Es un código **adicional**: no cambia ninguno de los 12 definidos.
+**Por qué.** Se aplica la jerarquía: el contrato (§2) lista los códigos válidos y manda sobre cualquier preferencia. El cliente React no necesita distinguirlos:
+ante un 401 fuera de `/auth/login` limpia la sesión y vuelve al login.
+Una primera versión de este documento proponía `UNAUTHENTICATED`; se descartó en la revisión de coherencia ([`revision-coherencia.md`](revision-coherencia.md)).
 
 ## D13 · Errores no previstos
 
-**Hueco.** RNF-4 dice "todo error HTTP usa el mismo cuerpo", y el contrato prohíbe trazas, SQL y rutas.
+**Hueco.** RNF-4 dice "todo error HTTP usa el mismo cuerpo", y el contrato prohíbe trazas, SQL y rutas. El contrato no define ningún código para un error del servidor.
 
 **Decisión.** Cualquier `Throwable` no mapeada responde **500** con `code: "INTERNAL_ERROR"`, mensaje genérico en español y `details: []`.
+Es la **única** extensión de códigos respecto al §2: sin ella, un fallo inesperado rompería RNF-4 (cuerpo único) o filtraría la traza.
 El detalle real se registra en el log del servidor, **sin** el cuerpo del login ni contraseñas.
 Con `APP_DEBUG=false` en producción.
 
@@ -255,3 +259,17 @@ Un préstamo es `overdue` si alguna de sus líneas está vencida; `open` si tien
 
 **Decisión.** **404 `NOT_FOUND`**. Un identificador mal formado no puede corresponder a ningún recurso, y el contrato dice que 404 aplica a "cualquier recurso".
 Evita además un error de Postgres por tipo `uuid` inválido (que sería un 500).
+
+## D25 · Tabla `migrations` y `search_path`
+
+**Riesgo técnico (no verificado: no hay PHP en la máquina).** D8 fija `search_path=library`, y la primera migración es la que crea el esquema `library`.
+Pero Laravel crea su tabla `migrations` **antes** de correr ninguna migración, y la crea en el primer esquema del `search_path`. Con `search_path=library`
+y el esquema aún inexistente, ese paso fallaría y la base nunca arrancaría (rompe RNF-5).
+
+**Decisión.**
+- `search_path = library,public` en `config/database.php`.
+- La tabla de control se fija a `public.migrations` (`'migrations' => ['table' => 'public.migrations']`), para que su ubicación no dependa de qué esquema exista en cada momento.
+- Las migraciones y los modelos usan nombres **calificados** (`library.book`) en lugar de depender del `search_path`.
+- `public.migrations` sigue siendo de la infraestructura del framework (D14), no una entidad de negocio.
+
+**Por qué.** Hace el arranque determinista sin poner DDL en `infra/` (Art. V). Queda anotado como **no ejecutado**: se comprueba al primer `migrate` real.

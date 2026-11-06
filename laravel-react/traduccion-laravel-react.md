@@ -144,7 +144,7 @@ Se verifica con un test de arquitectura ([§8](#8-pruebas-de-arquitectura-con-pe
 | Tema | Traducción |
 |---|---|
 | DDL | Solo en `database/migrations/`. `infra/` no contiene `CREATE TABLE` |
-| Esquema | `CREATE SCHEMA IF NOT EXISTS library` en la primera migración; `search_path=library` en `config/database.php` |
+| Esquema | `CREATE SCHEMA IF NOT EXISTS library` en la primera migración; `search_path=library,public` y tabla de control `public.migrations` (D25); nombres calificados `library.book` |
 | Tablas | Singular, con `$table` explícito: `category`, `book`, `member`, `loan`, `loan_item`, `user` |
 | Sin `DEFAULT` | Ninguna columna lo lleva; los valores los pone el código |
 | Sin auditoría | `$timestamps = false` y sin `created_at`/`updated_at` |
@@ -206,13 +206,13 @@ Un solo handler en `bootstrap/app.php` mapea todo al cuerpo `{ code, message, de
 | Excepción | `code` | Estado |
 |---|---|---|
 | `ValidationException` | `VALIDATION_ERROR` | 422 |
-| `AuthenticationException` y fallos de token | `INVALID_CREDENTIALS` (login) o `UNAUTHENTICATED` | 401 |
+| `AuthenticationException` y fallos de token | `INVALID_CREDENTIALS` (mensaje distinto en login y en token inválido, D12) | 401 |
 | Rol insuficiente | `FORBIDDEN_ROLE` | 403 |
 | `ModelNotFoundException`, `NotFoundHttpException` | `NOT_FOUND` | 404 |
 | `App\Domain\Exceptions\DomainException` | el propio `code` | el propio `status` |
 | Cualquier otra `Throwable` | `INTERNAL_ERROR` con mensaje genérico, sin traza | 500 |
 
-`UNAUTHENTICATED` e `INTERNAL_ERROR` no están en el §2 del contrato. Su registro y justificación están en `decisiones.md` (D12 y D13).
+`INTERNAL_ERROR` es la única extensión respecto al §2 del contrato; su justificación está en `decisiones.md` (D13). El 401 reutiliza `INVALID_CREDENTIALS` (D12).
 
 ## 12. Frontend (React + Vite)
 

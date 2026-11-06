@@ -8,7 +8,7 @@
 
   | Exigencia del data-model | Qué da Laravel | Resolución |
   |---|---|---|
-  | Esquema `library` | Usa `public` | `DB::statement('CREATE SCHEMA IF NOT EXISTS library')` en la primera migración y `search_path=library` en `config/database.php` |
+  | Esquema `library` | Usa `public`; crea su tabla `migrations` antes de la primera migración | `DB::statement('CREATE SCHEMA IF NOT EXISTS library')` en la primera migración, `search_path=library,public`, tabla de control `public.migrations` y nombres calificados (D25 en `decisiones.md`) |
   | `CHECK` (`ck_book_available_range`, `ck_book_total_positive`, `ck_user_role`) | No tiene método | `DB::statement('ALTER TABLE ... ADD CONSTRAINT ...')` |
   | Índice único **parcial** de ISBN `WHERE deleted_at IS NULL` | `unique()` no admite `WHERE` | `DB::statement('CREATE UNIQUE INDEX ... WHERE ...')` |
   | Índice parcial `loan_item (due_at) WHERE returned_at IS NULL` | Igual | `DB::statement` |

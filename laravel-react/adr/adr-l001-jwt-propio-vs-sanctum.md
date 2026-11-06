@@ -17,6 +17,6 @@
   - Sin estado: no hay revocación. Un token robado vale hasta que vence (8 h). Aceptable para el alcance; el spec no pide cierre de sesión en servidor.
   - Se pierde `Auth::user()`. El middleware carga el usuario por `sub` solo cuando un caso de uso lo necesita (p. ej. registrar `loaned_by_user_id`).
   - Se crea y se mantiene el middleware: poco código, pero propio.
-  - Un fallo de token responde 401 `UNAUTHENTICATED` (ver D12 en `decisiones.md`).
+  - Un fallo de token responde 401 `INVALID_CREDENTIALS`, con otro mensaje que el del login (ver D12 en `decisiones.md`).
 - **Cómo se verifica:** `Feature/AuthTest` decodifica el token y comprueba `sub`, `role` y `exp - iat = 28800`. Un token manipulado o vencido da 401.
   El `grep` del repo no encuentra ningún secreto real.
