@@ -1,0 +1,7 @@
+# Secretos y configuración local (Art. IX)
+.env
+.env.*
+!.env.example
+opencode.json
+.opencode/
+*.log
