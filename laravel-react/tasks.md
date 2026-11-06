@@ -32,7 +32,9 @@ Cada tarea termina cuando su **evidencia** existe y se puede ejecutar (Art. XII)
 - **Repos:** `infra`, `api`.
 - **Cubre:** RNF-5. CA-01.3 (solo `/health` público).
 - **Entregables:**
-  - `infra/docker-compose.yml`: `postgres:16` vacío con volumen, contenedor `api` (Laravel), contenedor `app`, red propia. Los builds salen de `../api` y `../app`.
+  - `infra/docker-compose.yml`: `postgres:16` vacío con volumen, contenedor `api` (Laravel), red propia. Los builds salen de `../api`.
+    El servicio `app` (build de `../app`) se declara con `profiles: ["web"]` y se activa en T8, cuando `app/` ya tiene un `Dockerfile`:
+    así cada commit deja el compose coherente (un build de una carpeta vacía lo rompería).
   - `infra/.env.example` con las variables del plan §2.
   - `api`: esqueleto Laravel limpio, `Dockerfile`, entrada que ejecuta `migrate --force` y `library:ensure-admin` al arrancar.
   - `GET /api/v1/health` → `{"status":"ok"}`.
