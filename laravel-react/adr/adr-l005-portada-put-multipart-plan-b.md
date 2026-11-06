@@ -8,12 +8,14 @@
 - **Qué cambió y por qué:** el spec .NET no tiene este problema: ASP.NET lee multipart con cualquier verbo. En Laravel el verbo importa.
 - **Decisión:**
   1. **Contrato primero:** se declara `Route::put('/books/{id}/cover')` tal como pide el contrato.
-  2. **Plan B, activo desde ya:** se declara **además** `Route::post('/books/{id}/cover')` que apunta al mismo controlador.
-     El cliente React envía `POST` con el campo extra `_method=PUT` (Laravel lo acepta y lo trata como `PUT`).
-     Ambas rutas comparten el mismo middleware (`admin`) y el mismo Form Request.
-  3. El controlador lee `$request->file('file')`. Si llega nulo en la ruta `PUT`, responde 422 `VALIDATION_ERROR` con "adjunte el archivo en el campo `file`",
+  2. **Plan B, sin rutas nuevas:** el cliente React envía `POST` multipart con el campo extra `_method=PUT`.
+     PHP sí puebla `$_FILES` en un `POST`, y Laravel (Symfony) sustituye el verbo por `PUT` antes de enrutar,
+     así que la petición entra por la **misma** ruta `PUT` y por el mismo middleware (`admin`) y Form Request.
+     No se declara ninguna ruta `POST`: el contrato de rutas queda intacto.
+  3. El controlador lee `$request->file('file')`. Si llega nulo, responde 422 `VALIDATION_ERROR` con "adjunte el archivo en el campo `file`",
      nunca un 500.
-  4. Se verifica con `curl -X PUT -F file=@x.png` cuando haya PHP. Si funciona, el plan B queda como alias inocuo.
+  4. Se verifica con `curl -X PUT -F file=@x.png` cuando haya PHP. Si el `PUT` nativo funciona, el cliente puede usarlo directamente;
+     si no, React usa `POST` + `_method=PUT`. Hasta entonces, **React usa el plan B por defecto**.
 - **Validación y almacenamiento:**
   - Contenido, no extensión: `mimetypes:image/jpeg,image/png` y `max:2048` (KB).
   - Se guarda con **clave opaca**: un UUID v4 sin extensión. En `book.cover_key` va esa clave, nunca una ruta (CA-03.4).
@@ -22,12 +24,13 @@
     Si el borrado del binario falla, queda un archivo huérfano (inocuo), no una referencia rota.
   - Reemplazar: se guarda el binario nuevo, se actualiza `cover_key`, se confirma y se borra el binario viejo.
 - **Alternativas descartadas:**
-  - *Solo `POST` con `_method`:* contradice el contrato (`PUT`).
+  - *Declarar una ruta `POST` propia:* añade una ruta fuera del contrato y nunca se alcanzaría con `_method=PUT`.
+  - *Cambiar el contrato a `POST`:* el contrato manda; el servidor sigue exponiendo `PUT`.
   - *Aceptar el cuerpo binario crudo en `PUT` (`Content-Type: image/png`):* cambia el contrato (`multipart`, campo `file`).
   - *Parsear el multipart a mano en `PUT`:* frágil y no aporta nada si `POST` funciona.
 - **Consecuencias:**
-  - Una ruta extra fuera del contrato (`POST /books/{id}/cover`). Se documenta aquí y en el README de `api`; no cambia ninguna respuesta.
-  - La `POST` deja de ser "solo `GET`/`PUT`/`DELETE`" para esta ruta; los clientes que sigan el contrato al pie de la letra no se ven afectados.
+  - Ninguna ruta nueva: el servidor cumple el contrato tal cual. La diferencia vive solo en el cliente React, que envía `POST` + `_method=PUT`.
+  - Un `POST` directo a `/books/{id}/cover` **sin** `_method` responde 404/405 (no existe esa ruta): es lo esperado.
   - **Pendiente de ejecución:** hasta que corra con PHP real, no se sabe si el `PUT` nativo funciona. `ESTADO.md` lo declara.
 - **Cómo se verifica:** `Feature/CoverTest`: PNG de 2 MB → 200; PNG de 3 MB → 422; GIF renombrado `.png` → 422; sin portada `cover_key` es `null`;
-  tras quitarla, `GET /books/{id}/cover` → 404; ambas rutas (`PUT` y `POST` con `_method`) dan el mismo resultado.
+  tras quitarla, `GET /books/{id}/cover` → 404; `PUT` y `POST` con `_method=PUT` dan el mismo resultado.
